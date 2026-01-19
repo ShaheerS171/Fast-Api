@@ -1,6 +1,9 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 # EmailStr is the variable in the pydantic that will automatically check the email 
 # Now we will import the field_validator from the pydantic module
+# the feild validator operates in 2 modes, the before and the after mode
+# In the after mode the value goes to the feild validator after the coersion while in the before it goes before the coersion
+# coersion mean the conversion of the data type from one to other
 from typing import List, Dict, Optional,Annotated
 
 class Patient(BaseModel):

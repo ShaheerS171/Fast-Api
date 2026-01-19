@@ -24,6 +24,11 @@ patient1 = Patient(**patient_dict)
 print(patient1.address) # this is how to use the nested model
 
 # this method will convert the object into the python dictionary
-temp = patient1.model_dump()
+# you can also select which field to dump
+# similarly you can use the exclude and will also get the default value 
+temp = patient1.model_dump(include={'name', 'gender'})
 print(temp)
 print(type(temp))
+
+# This is how to convert the object into the json file  the type of this will be string 
+temp2 = patient1.model_dump_json()

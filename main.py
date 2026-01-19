@@ -1,9 +1,40 @@
 # the fast api is for the fast api http exception is to give the costumizable exception while the path is to give
 # the good description to your path parameters 
 from fastapi import FastAPI, HTTPException, Path, Query
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, computed_field
+from typing import Annotated, Literal# Literal is use to give the specific option to the user
 import json
 
 app = FastAPI() # making the object of the fast api
+
+class Pateint(BaseModel):
+  # now add the field the patient required to fill
+  id: Annotated[str, Field(..., description= "id of the patient", examples=["P001"])]
+  name: Annotated[str, Field(..., description="Name of the patient")]
+  city: Annotated[str, Field(...,  description=" Where the patient is living")]
+  age: Annotated[int, Field(..., description=" Age of the patient", gt=0, lt=120)]
+  gender: Annotated[Literal["male", "female", "Other"], Field(default="Male", description="Gender of the patient")]# wew dont need the required after the default value
+  height: Annotated[float, Field(..., description="Give me the weight in ft", gt= 0, lt= 8)]
+  weight: Annotated[float, Field(..., description=" give me the weight in lb", gt=0, lt= 250)]
+
+  @computed_field
+  @property
+  def bmi(self) -> float:
+    bmi = self.weight/(self.height**2)
+    return bmi
+  
+  @computed_field
+  @property
+  def verdict(self) -> str:
+    if self.bmi < 18.5:
+      return "under weight"
+    elif self.bmi < 25:
+      return "normal"
+    elif self.bmi < 30:
+      return "normal"
+    else:
+      return "obese"
 
 # here we will make the function to load the data from the json file
 def load_data():
@@ -27,7 +58,7 @@ def view_patient():
 
 @app.get("/patient/{id}") # this is how you give the parameter in it. It is like i wanna see this patient id
 # this is how you give the path parameters the ... is that the field is required and the other things are defined by their names
-def search_patient(id: str = Path(..., description= "Give the id of the patient you wanna see", example= "P001")): # This is how you give the parameter in the python
+def search_patient(id: str = Path(..., description= "Give the id of the patient you wanna see", examples= ["P001"])): # This is how you give the parameter in the python
   data = load_data() # load the data of the patient in there 
   if id in data:
     return data[id] # if the id of the patient is present in the data then return the whole thing to the user
@@ -49,7 +80,7 @@ def sort_patient(sort_by: str =
     raise HTTPException(status_code= 404, detail="There is no field to be sorted like this") 
   if order not in ["asc", "dcs"]:
     raise HTTPException(status_code= 404, detail="Select between asc, dsc") 
-  
+
   data = load_data()
   # now we have to make the code so the data is sorted as the user requested to us
 
@@ -59,3 +90,33 @@ def sort_patient(sort_by: str =
   sort_order = False if order == "asc" else True
   sorted_data = sorted(data.values(), key = lambda x: x.get(sort_by, 0), reverse=sort_order)
   return sorted_data
+
+# save the data into the json file
+def save_data(data):
+  with open("patients.json", "w") as f:
+    json.dump(data, f)# this will convert thr python dictionary into the  json file
+
+# this is how to create the post route   
+@app.post("/create")
+# now the user will send the data to us in the form of the json or anything and we will send it to the pydantic
+def create_pateint(patient: Pateint):
+  
+  # load the existing data into the file 
+  data = load_data()
+
+  #check if the patient already exist or not
+  if patient.id in data:
+    raise HTTPException(status_code=400, detail="Patient already exist")
+
+  # add the new patient to the data base
+  # now we have to add the pydantic object patient into the python dictionary
+  # now we exclude the id cause the id is in the successive term 
+  data[patient.id] = patient.model_dump(exclude={'id'})
+
+  save_data(data)
+
+  # Now we will give the json response to tell the user that the patient have been created
+  return JSONResponse(status_code=201, content={'message': 'Patient created successfully'})
+
+
+
